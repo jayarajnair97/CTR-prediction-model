@@ -1,0 +1,118 @@
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import streamlit as st
+
+# Load data
+@st.cache
+def load_data():
+    data = pd.read_csv("CTR_Dataset.csv")
+    data["Clicked on Ad"] = data["Clicked on Ad"].map({0: "No", 1: "Yes"})
+    return data
+
+# Function for CTR Analysis
+def ctr_analysis(data):
+    st.subheader("Click Through Rate Analysis")
+
+    # Click Through Rate based on Time Spent on Site
+    fig1 = px.box(data, x="Daily Time Spent on Site", color="Clicked on Ad", 
+                  title="Click Through Rate based Time Spent on Site", 
+                  color_discrete_map={'Yes':'blue', 'No':'red'})
+    st.plotly_chart(fig1)
+
+    # Click Through Rate based on Daily Internet Usage
+    fig2 = px.box(data, x="Daily Internet Usage", color="Clicked on Ad", 
+                  title="Click Through Rate based on Daily Internet Usage", 
+                  color_discrete_map={'Yes':'blue', 'No':'red'})
+    st.plotly_chart(fig2)
+
+    # Click Through Rate based on Age
+    fig3 = px.box(data, x="Age", color="Clicked on Ad", 
+                  title="Click Through Rate based on Age", 
+                  color_discrete_map={'Yes':'blue', 'No':'red'})
+    st.plotly_chart(fig3)
+
+    # Click Through Rate based on Area Income
+    fig4 = px.box(data, x="Area Income", color="Clicked on Ad", 
+                  title="Click Through Rate based on Income", 
+                  color_discrete_map={'Yes':'blue', 'No':'red'})
+    st.plotly_chart(fig4)
+
+# Calculating CTR of Ads
+def calculate_ctr(data):
+    st.subheader("Calculating CTR of Ads")
+    clicked_ads = data["Clicked on Ad"].value_counts()["Yes"]
+    total_ads = len(data)
+    click_through_rate = clicked_ads / total_ads * 100
+    st.write(f"Click Through Rate: {click_through_rate:.2f}%")
+
+# Click Through Rate Prediction Model
+def ctr_prediction(data):
+    st.subheader("Click Through Rate Prediction Model")
+
+    # Data Preparation
+    X = data.drop(['Clicked on Ad', 'Ad Topic Line', 'City', 'Country', 'Timestamp'], axis=1)
+    y = data['Clicked on Ad']
+
+    # Train-Test Split
+    Xtrain, Xtest, ytrain, ytest = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train Models
+    models = {
+        "Random Forest Classifier": RandomForestClassifier(),
+        "Decision Tree Classifier": DecisionTreeClassifier(),
+        "Logistic Regression": LogisticRegression(),
+        "Support Vector Machine": SVC(),
+        "Gaussian Naive Bayes": GaussianNB()
+    }
+
+    for name, model in models.items():
+        model.fit(Xtrain, ytrain)
+        y_pred = model.predict(Xtest)
+        accuracy = accuracy_score(ytest, y_pred)
+        st.write(f"Accuracy for {name}: {accuracy:.4f}")
+
+    # User Input for Prediction
+    st.subheader("Prediction")
+    daily_time_spent = st.slider("Daily Time Spent on Site", min_value=0, max_value=400, step=1)
+    age = st.slider("Age", min_value=10, max_value=100, step=1)
+    area_income = st.slider("Area Income", min_value=10000, max_value=80000, step=1000)
+    daily_internet_usage = st.slider("Daily Internet Usage", min_value=0, max_value=300, step=1)
+    gender = st.radio("Gender", options=["Male", "Female"])
+
+    gender_map = {"Male": 1, "Female": 0}
+    gender_encoded = gender_map[gender]
+
+    # Features Array
+    features = np.array([[daily_time_spent, age, area_income, daily_internet_usage, gender_encoded]])
+
+    # Prediction
+    for name, model in models.items():
+        prediction = model.predict(features)
+        st.write(f"Prediction for {name}: {'Yes' if prediction[0] == 'Yes' else 'No'}")
+
+def main():
+    st.title("Ads Click Through Rate Prediction")
+
+    # Load data
+    data = load_data()
+
+    # Click Through Rate Analysis
+    ctr_analysis(data)
+
+    # Calculating CTR of Ads
+    calculate_ctr(data)
+
+    # Click Through Rate Prediction Model
+    ctr_prediction(data)
+
+if __name__ == "__main__":
+    main()
